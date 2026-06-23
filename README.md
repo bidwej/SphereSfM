@@ -1,29 +1,21 @@
 # SphereSfM on upstream COLMAP 4.x
 
-This repository is being migrated from a hard fork of COLMAP 3.8 to a branch
-based on upstream COLMAP 4.x (`main`).
+This repository is a migration of SphereSfM from a hard fork of COLMAP 3.8 to a
+lightweight branch based on upstream COLMAP `main`.
 
 ## Why migrate?
 
 The spherical (360° ERP) SfM functionality that SphereSfM originally added to
 COLMAP 3.8 is now native upstream as the `EQUIRECTANGULAR` camera model
 ([PR #4441](https://github.com/colmap/colmap/pull/4441)). Maintaining a separate
-hard fork is no longer necessary for the core feature, and upstream receives
-ongoing bug fixes, performance improvements, and new algorithms.
+hard fork is no longer necessary for the core feature.
 
-## Status
-
-- [x] Branch `sphere-sfm-v2` created from upstream COLMAP `main`.
-- [x] `SPHERE` → `EQUIRECTANGULAR` converter script (`scripts/convert_sphere_to_equirectangular.py`).
-- [ ] Port `sphere_cubic_reprojecer` / cubic perspective export.
-- [ ] Port `ImageReader.pose_path` if still required.
-- [ ] Build verification and regression tests.
-
-See [`PORTING.md`](PORTING.md) for the full migration guide and remaining work.
+This branch uses **only upstream types and workflows** — no custom camera models,
+no custom enums, no C++ patches.
 
 ## Quick start
 
-Convert an existing sphere-sfm reconstruction:
+### Convert an existing sphere-sfm reconstruction
 
 ```bash
 python scripts/convert_sphere_to_equirectangular.py \
@@ -31,7 +23,7 @@ python scripts/convert_sphere_to_equirectangular.py \
     --output_path /path/to/upstream-ready-reconstruction
 ```
 
-Run spherical SfM with upstream COLMAP:
+### Direct spherical SfM
 
 ```bash
 colmap feature_extractor \
@@ -48,9 +40,20 @@ colmap mapper \
     --output_path ./colmap/sparse
 ```
 
-For a Python reference, see upstream's `python/examples/panorama_sfm.py`.
+### Perspective-from-panorama SfM
+
+```bash
+python python/examples/panorama_sfm.py \
+    --image_path ./images \
+    --workspace_path ./workspace \
+    --pano_render_type perspective_overlapping
+```
+
+## Migration details
+
+See [`PORTING.md`](PORTING.md).
 
 ## Original SphereSfM
 
-The original sphere-sfm code (COLMAP 3.8 fork) remains available on the
-`origin/main` branch and at https://github.com/json87/spheresfm.git.
+The original sphere-sfm code (COLMAP 3.8 fork) remains available on
+`origin/main` and at https://github.com/json87/spheresfm.git.

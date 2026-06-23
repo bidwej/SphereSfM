@@ -1,31 +1,25 @@
-# Migration to Upstream COLMAP 4.x
+# Migration to Upstream COLMAP 4.x — Minimal Strategy
 
-This branch (`sphere-sfm-v2`) is based on upstream COLMAP `main` and replaces the
-old COLMAP 3.8 hard fork. The core spherical-SfM functionality that motivated the
-fork is now native upstream as the `EQUIRECTANGULAR` camera model (merged in PR
-[#4441](https://github.com/colmap/colmap/pull/4441)).
+This branch (`sphere-sfm-v2`) is based on upstream COLMAP `main`. We are **not**
+maintaining a hard fork. Instead, we use upstream's native spherical support and
+standard workflows.
 
-## What changed in the camera model
+## Camera model change
 
-| | sphere-sfm fork | upstream COLMAP 4.x |
-|---|---|---|
-| Model name | `SPHERE` | `EQUIRECTANGULAR` |
-| Model ID | `11` | `17` |
-| Parameters | `f, cx, cy` | `w, h` (image dimensions only) |
-| Pipeline flag | `Mapper.sphere_camera 1` | automatic via `Camera::IsSpherical()` |
+| sphere-sfm fork | upstream COLMAP 4.x |
+|---|---|
+| Model name `SPHERE`, ID `11`, params `f, cx, cy` | Model name `EQUIRECTANGULAR`, ID `17`, params `w, h` |
+| `Mapper.sphere_camera 1` flag | Not needed; detected automatically via `Camera::IsSpherical()` |
 
 ## Converting existing reconstructions
 
-Use the provided Python script for **text-format** reconstructions:
+For text-format reconstructions:
 
 ```bash
 python scripts/convert_sphere_to_equirectangular.py \
     --input_path  /path/to/sphere-sfm-reconstruction \
     --output_path /path/to/upstream-ready-reconstruction
 ```
-
-The script rewrites `cameras.txt` (`SPHERE` → `EQUIRECTANGULAR`) and copies
-`images.txt` / `points3D.txt` unchanged.
 
 If your reconstruction is binary, first convert it to text with the old
 sphere-sfm binary:
@@ -40,10 +34,9 @@ colmap model_converter \
 
 Then run the Python converter above.
 
-## Running spherical SfM with upstream COLMAP
+## Recommended spherical SfM workflows
 
-The `python/examples/panorama_sfm.py` script in upstream COLMAP demonstrates the
-new workflow. The equivalent CLI workflow is:
+### 1. Direct equirectangular reconstruction (fastest)
 
 ```bash
 colmap feature_extractor \
@@ -52,10 +45,7 @@ colmap feature_extractor \
     --ImageReader.camera_model EQUIRECTANGULAR \
     --ImageReader.single_camera 1
 
-colmap spatial_matcher \
-    --database_path ./colmap/database.db \
-    --SiftMatching.max_error 4 \
-    --SiftMatching.min_num_inliers 50
+colmap spatial_matcher --database_path ./colmap/database.db
 
 colmap mapper \
     --database_path ./colmap/database.db \
@@ -63,58 +53,35 @@ colmap mapper \
     --output_path ./colmap/sparse
 ```
 
-No `--Mapper.sphere_camera` option is required; upstream detects spherical
-cameras automatically and uses bearing-vector geometry.
+### 2. Perspective rig reconstruction from panoramas (most accurate)
 
-## Fork features still to port
-
-The following sphere-sfm features are **not yet in upstream COLMAP** and must be
-ported if they are still needed:
-
-### 1. `sphere_cubic_reprojecer` / `ExportPerspectiveCubic`
-
-The fork provides a command that exports a spherical reconstruction as six
-perspective cube-face images per panorama:
+Use upstream's official example:
 
 ```bash
-colmap sphere_cubic_reprojecer \
+python python/examples/panorama_sfm.py \
     --image_path ./images \
-    --input_path ./colmap/sparse/0 \
-    --output_path ./colmap/sparse-cubic
+    --workspace_path ./workspace \
+    --pano_render_type perspective_overlapping
 ```
 
-Upstream has no equivalent command. A 4.x implementation would:
+This renders perspective virtual cameras from the panoramas and runs standard
+pinhole SfM+MVS. It replaces the fork's `sphere_cubic_reprojecer` without any
+custom C++ code.
 
-- Read the spherical reconstruction (`src/colmap/scene/reconstruction_io_text.h`).
-- For each registered spherical image, generate six pinhole views using the cubic
-  face rotations from the old `src/base/sphere_camera.cc`.
-- Use `WarpImageBetweenCameras` (`src/colmap/image/warp.h`) or a custom tangent
-  projection to resample the ERP image onto each pinhole camera.
-- Write the resulting perspective images and a new reconstruction with trivial
-  rigs/frames (`AddCameraWithTrivialRig`, `AddImageWithTrivialFrame`).
-- Register the new command in `src/colmap/exe/colmap.cc` (or add it to
-  `src/colmap/exe/model.cc`) and wire it into `src/colmap/exe/CMakeLists.txt`.
+## What we are NOT porting
 
-### 2. `ImageReader.pose_path`
+We intentionally keep this branch free of custom C++ patches:
 
-The fork added `--ImageReader.pose_path` to inject external POS data during
-feature extraction. Upstream does not have this option. Possible alternatives:
+- **`sphere_cubic_reprojecer`**: Replaced by `panorama_sfm.py`.
+- **`ImageReader.pose_path`**: Use upstream pose priors / `pose_prior_mapper`.
+- **Custom `SPHERE` camera model**: Replaced by upstream `EQUIRECTANGULAR`.
+- **`Mapper.sphere_camera` flag**: Replaced by automatic spherical detection.
 
-- Import pose priors via `pose_prior_mapper` or the new sensor/pose-prior APIs.
-- Re-implement the option in `src/colmap/controllers/option_manager.cc` and
-  `src/colmap/feature/extraction.cc` if the exact workflow must be preserved.
-
-### 3. Spherical error-threshold helpers
-
-Functions such as `ImagePlaneToSpherePlaneError` in the old
-`src/base/sphere_camera.cc` are no longer needed; upstream normalizes errors via
-`Camera::CamFromImgThreshold` and the bearing-vector cost functions.
+No new enums, no new types, no new camera models. Standardize on upstream.
 
 ## Build notes
 
-This branch requires the standard upstream COLMAP 4.x build dependencies
-(vcpkg/conda, Ceres, Eigen, OpenImageIO, etc.). On Windows without an existing
-vcpkg installation, run:
+Build upstream COLMAP 4.x as usual:
 
 ```bash
 mkdir build && cd build
@@ -122,5 +89,4 @@ cmake .. -GNinja -DCMAKE_BUILD_TYPE=Release -DGUI_ENABLED=OFF -DCUDA_ENABLED=OFF
 ninja
 ```
 
-If CMake cannot find dependencies, install them through vcpkg first (see
-upstream COLMAP build documentation).
+See upstream documentation for full dependency instructions.
