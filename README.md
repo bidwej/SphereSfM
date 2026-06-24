@@ -18,7 +18,7 @@ no custom enums, no C++ patches.
 ### Convert an existing sphere-sfm reconstruction
 
 ```bash
-python scripts/convert_sphere_to_equirectangular.py \
+python python/examples/convert_sphere_to_equirectangular.py \
     --input_path  /path/to/sphere-sfm-reconstruction \
     --output_path /path/to/upstream-ready-reconstruction
 ```
