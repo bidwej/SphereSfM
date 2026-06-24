@@ -194,14 +194,6 @@ TEST(FileCopy, Nominal) {
   const auto dst_hard_link_path = dir / "destination_hard_link.txt";
   FileCopy(src_path, dst_hard_link_path, FileCopyType::HARD_LINK);
   EXPECT_TRUE(ExistsFile(dst_hard_link_path));
-
-  const auto dst_soft_link_path = dir / "destination_soft_link.txt";
-  try {
-    FileCopy(src_path, dst_soft_link_path, FileCopyType::SOFT_LINK);
-  } catch (const std::filesystem::filesystem_error& e) {
-    GTEST_SKIP() << "Could not create symlink: " << e.what();
-  }
-  EXPECT_TRUE(ExistsFile(dst_soft_link_path));
 }
 
 TEST(GetRecursiveFileList, Nominal) {

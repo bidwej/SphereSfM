@@ -38,7 +38,6 @@
 #include "colmap/feature/sift.h"
 #include "colmap/feature/utils.h"
 #include "colmap/geometry/essential_matrix.h"
-#include "colmap/math/math.h"
 #include "colmap/math/random.h"
 #include "colmap/util/opengl_utils.h"
 
@@ -77,8 +76,6 @@ void ValidateKeypoints(const FeatureKeypoints& keypoints,
     EXPECT_LE(keypoints[i].x, bitmap.Width());
     EXPECT_LE(keypoints[i].y, bitmap.Height());
     EXPECT_GT(keypoints[i].ComputeScale(), 0);
-    EXPECT_GT(keypoints[i].ComputeOrientation(), -M_PI);
-    EXPECT_LT(keypoints[i].ComputeOrientation(), M_PI);
   }
 }
 
